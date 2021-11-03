@@ -1,0 +1,1686 @@
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import pathlib
+```
+
+
+```python
+
+failas1 = pathlib.Path.joinpath(pathlib.Path.home(), "Desktop", "biod2021",'viena', 'listings.csv')
+listings = pd.read_csv(
+   failas1, index_col="id")
+
+failas2 = pathlib.Path.joinpath(pathlib.Path.home(), "Desktop", "biod2021",'viena', 'listings2.csv')
+listings_details = pd.read_csv(
+    failas2,
+    index_col="id",
+    low_memory=False,)
+
+failas3 = pathlib.Path.joinpath(pathlib.Path.home(), "Desktop", "biod2021",'viena', 'calendar.csv.gz')
+calendar = pd.read_csv(
+    failas3,
+    parse_dates=["date"],
+    index_col=["listing_id"],)
+
+failas4 = pathlib.Path.joinpath(pathlib.Path.home(), "Desktop", "biod2021",'viena', 'reviews.csv')
+reviews = pd.read_csv(
+   failas4,
+    parse_dates=["date"],
+    index_col=["listing_id"],)
+
+failas5 = pathlib.Path.joinpath(pathlib.Path.home(), "Desktop", "biod2021",'viena', 'reviews.csv.gz')
+reviews_details = pd.read_csv(
+    failas5,
+    parse_dates=["date"],
+    index_col=["listing_id"],)
+```
+
+
+```python
+pd.set_option("display.max_column", 500)
+pd.set_option("display.max_rows", 500)
+pd.set_option("display.max_seq_items", 500)
+pd.set_option("display.max_colwidth", 500)
+pd.set_option("expand_frame_repr", True)
+
+
+target_columns = [
+    "property_type",
+    "accommodates",
+    "first_review",
+    "review_scores_value",
+    "review_scores_cleanliness",
+    "review_scores_location",
+    "review_scores_accuracy",
+    "review_scores_communication",
+    "review_scores_checkin",
+    "review_scores_rating",
+    "maximum_nights",
+    "listing_url",
+    "host_is_superhost",
+    "host_about",
+    "host_response_time",
+    "host_response_rate",
+]
+listings = pd.merge(
+    listings, listings_details[target_columns], on="id", how="left")
+listings = listings.drop(columns=["neighbourhood_group"])
+listings["host_response_rate"] = pd.to_numeric(
+    listings["host_response_rate"].str.strip("%")
+)
+```
+
+>> 1. Top 10 savininkų (daugiausiai nuomoja, uždirba)
+- daugiausiai nuomoja
+
+
+```python
+top10Id = (
+    listings.groupby(["host_id"])["host_name"]
+    .count()
+    .reset_index(name="count")
+    .sort_values(by="count", ascending=False)
+    .head(10)
+)
+print(top10Id)
+```
+
+            host_id  count
+    6382  378060726    243
+    1362   15935294     80
+    870     8632750     79
+    302     2816192     67
+    56       757295     61
+    6459  404652017     61
+    2026   27775775     52
+    5101  195648200     50
+    613     5874520     46
+    6402  385064248     45
+
+
+
+```python
+for t_id in top10Id["host_id"].to_numpy():
+    print(listings.loc[listings["host_id"] == t_id].iloc[1, 2])
+```
+
+    Svetlana
+    Vienna Residence
+    Andreas
+    Martin
+    Khurshed
+    Ali
+    Rene
+    Carolyn - Travanto
+    AdInfinitum    Philip Beata
+    Blueground
+
+
+- uždirba
+
+
+```python
+top100Id = (
+    listings.groupby(["host_id"])["host_name"]
+    .count()
+    .reset_index(name="count")
+    .sort_values(by="count", ascending=False)
+    .head(100)
+)
+top100Id.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>host_id</th>
+      <th>count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>6382</th>
+      <td>378060726</td>
+      <td>243</td>
+    </tr>
+    <tr>
+      <th>1362</th>
+      <td>15935294</td>
+      <td>80</td>
+    </tr>
+    <tr>
+      <th>870</th>
+      <td>8632750</td>
+      <td>79</td>
+    </tr>
+    <tr>
+      <th>302</th>
+      <td>2816192</td>
+      <td>67</td>
+    </tr>
+    <tr>
+      <th>56</th>
+      <td>757295</td>
+      <td>61</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+cummulative_sum = (
+    listings[listings["host_id"].isin(top100Id["host_id"])]
+    .groupby("host_id")["price"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+)
+cummulative_sum.head()
+```
+
+
+
+
+    host_id
+    129829780    20794
+    378060726    13432
+    909601       12110
+    404652017    11698
+    8632750       8992
+    Name: price, dtype: int64
+
+
+
+
+```python
+for c_id, c_sum in zip(cummulative_sum.index.to_numpy(), cummulative_sum.to_numpy()):
+    print(
+        f'{listings.loc[listings["host_id"] == c_id].iloc[1, 2]} uzdirba {c_sum}')
+```
+
+    Aliz uzdirba 20794
+    Svetlana uzdirba 13432
+    Bianca & Paul uzdirba 12110
+    Ali uzdirba 11698
+    Andreas uzdirba 8992
+    Vienna Residence uzdirba 7997
+    Glorija Immobilien uzdirba 7863
+    Carolyn - Travanto uzdirba 7209
+    Team Richard uzdirba 5324
+    Isabelle uzdirba 5085
+
+
+>>  2. Kaip dienos kaina kinta jeigu nuomojamasi savaitei/mėnesiui/dienai (listings) 
+
+
+```python
+#duomenyse yra tik kaina dienai
+```
+
+
+```python
+listings.columns
+```
+
+
+
+
+    Index(['name', 'host_id', 'host_name', 'neighbourhood', 'latitude',
+           'longitude', 'room_type', 'price', 'minimum_nights',
+           'number_of_reviews', 'last_review', 'reviews_per_month',
+           'calculated_host_listings_count', 'availability_365',
+           'number_of_reviews_ltm', 'license', 'property_type', 'accommodates',
+           'first_review', 'review_scores_value', 'review_scores_cleanliness',
+           'review_scores_location', 'review_scores_accuracy',
+           'review_scores_communication', 'review_scores_checkin',
+           'review_scores_rating', 'maximum_nights', 'listing_url',
+           'host_is_superhost', 'host_about', 'host_response_time',
+           'host_response_rate'],
+          dtype='object')
+
+
+
+
+```python
+listings.price.head()
+```
+
+
+
+
+    id
+    15883    120
+    38768     65
+    40625     88
+    51287     60
+    70637     50
+    Name: price, dtype: int64
+
+
+
+
+```python
+listings.price.mean()
+```
+
+
+
+
+    80.37399637399638
+
+
+
+>> 3. Kaip kaina priklauso nuo vietos mieste įvertinimo? Švaros? ir t.t
+
+
+```python
+listings.columns
+```
+
+
+
+
+    Index(['name', 'host_id', 'host_name', 'neighbourhood', 'latitude',
+           'longitude', 'room_type', 'price', 'minimum_nights',
+           'number_of_reviews', 'last_review', 'reviews_per_month',
+           'calculated_host_listings_count', 'availability_365',
+           'number_of_reviews_ltm', 'license', 'property_type', 'accommodates',
+           'first_review', 'review_scores_value', 'review_scores_cleanliness',
+           'review_scores_location', 'review_scores_accuracy',
+           'review_scores_communication', 'review_scores_checkin',
+           'review_scores_rating', 'maximum_nights', 'listing_url',
+           'host_is_superhost', 'host_about', 'host_response_time',
+           'host_response_rate'],
+          dtype='object')
+
+
+
+
+```python
+listings.columns
+```
+
+
+
+
+    Index(['name', 'host_id', 'host_name', 'neighbourhood', 'latitude',
+           'longitude', 'room_type', 'price', 'minimum_nights',
+           'number_of_reviews', 'last_review', 'reviews_per_month',
+           'calculated_host_listings_count', 'availability_365',
+           'number_of_reviews_ltm', 'license', 'property_type', 'accommodates',
+           'first_review', 'review_scores_value', 'review_scores_cleanliness',
+           'review_scores_location', 'review_scores_accuracy',
+           'review_scores_communication', 'review_scores_checkin',
+           'review_scores_rating', 'maximum_nights', 'listing_url',
+           'host_is_superhost', 'host_about', 'host_response_time',
+           'host_response_rate'],
+          dtype='object')
+
+
+
+
+```python
+plt.scatter(listings.review_scores_location, listings.price)
+plt.xlabel("review_scores_location")
+plt.ylabel("price")
+```
+
+
+
+
+    Text(0, 0.5, 'price')
+
+
+
+
+    
+![png](output_18_1.png)
+    
+
+
+
+```python
+listings.groupby("review_scores_location").price.mean()
+```
+
+
+
+
+    review_scores_location
+    0.00     42.000000
+    1.00     71.388889
+    2.00     60.142857
+    2.50     58.333333
+    2.67    125.000000
+    2.75     13.000000
+    2.83     95.000000
+    3.00     81.104167
+    3.25     38.000000
+    3.33     75.250000
+    3.38     39.000000
+    3.40     72.000000
+    3.46     55.000000
+    3.50     73.222222
+    3.54     10.000000
+    3.57     36.500000
+    3.60     45.000000
+    3.67    107.142857
+    3.71     69.000000
+    3.73     45.000000
+    3.75    841.250000
+    3.80     42.500000
+    3.83     61.666667
+    3.86     40.000000
+    3.88     58.666667
+    3.89    104.000000
+    3.91     40.000000
+    3.92     10.000000
+    3.93     14.000000
+    3.94     60.500000
+    3.95    125.000000
+    4.00    112.677656
+    4.05     62.500000
+    4.06     40.000000
+    4.08     82.400000
+    4.09     45.000000
+    4.10     71.250000
+    4.11     53.250000
+    4.12     60.500000
+    4.13     45.500000
+    4.14     63.444444
+    4.15     60.500000
+    4.16     41.333333
+    4.17     54.450000
+    4.18     52.571429
+    4.19     52.000000
+    4.20     53.935484
+    4.21     52.666667
+    4.22     59.916667
+    4.23     48.625000
+    4.24     43.000000
+    4.25     91.228571
+    4.26     56.250000
+    4.27     57.666667
+    4.28     44.000000
+    4.29     52.277778
+    4.30     63.266667
+    4.31     75.600000
+    4.32     56.250000
+    4.33     57.765306
+    4.34     42.250000
+    4.35     50.466667
+    4.36     63.562500
+    4.37     51.000000
+    4.38     68.214286
+    4.39     39.777778
+    4.40     59.159091
+    4.41     51.666667
+    4.42     60.928571
+    4.43     53.702703
+    4.44     62.208333
+    4.45     58.153846
+    4.46     54.296296
+    4.47     59.066667
+    4.48     74.560000
+    4.49     55.266667
+    4.50     65.703390
+    4.51     53.562500
+    4.52     66.818182
+    4.53     72.800000
+    4.54     56.589744
+    4.55     61.839286
+    4.56     62.258621
+    4.57     60.772727
+    4.58     55.723404
+    4.59     57.612903
+    4.60     90.807692
+    4.61     88.296296
+    4.62     64.625000
+    4.63     61.152174
+    4.64     70.294118
+    4.65     56.720588
+    4.66     59.111111
+    4.67     64.752613
+    4.68     56.982759
+    4.69     69.848837
+    4.70     58.863636
+    4.71     65.607143
+    4.72     56.253521
+    4.73     73.689320
+    4.74     68.898734
+    4.75     63.400000
+    4.76     86.441860
+    4.77     69.019802
+    4.78     65.936000
+    4.79     70.083333
+    4.80     63.120536
+    4.81     76.057143
+    4.82     75.630435
+    4.83     67.593607
+    4.84     85.552083
+    4.85     68.027027
+    4.86     69.558011
+    4.87     74.285714
+    4.88     74.738693
+    4.89     70.682119
+    4.90     85.120301
+    4.91     78.289062
+    4.92     79.864000
+    4.93     73.352000
+    4.94     91.214286
+    4.95    100.768519
+    4.96     94.523364
+    4.97     95.083333
+    4.98    122.609375
+    4.99    118.651163
+    5.00     91.207192
+    Name: price, dtype: float64
+
+
+
+
+```python
+listings.boxplot(column="price", by="review_scores_location")
+```
+
+
+
+
+    <AxesSubplot:title={'center':'price'}, xlabel='review_scores_location'>
+
+
+
+
+    
+![png](output_20_1.png)
+    
+
+
+
+```python
+listings.boxplot(column="price", by="review_scores_cleanliness")
+```
+
+
+
+
+    <AxesSubplot:title={'center':'price'}, xlabel='review_scores_cleanliness'>
+
+
+
+
+    
+![png](output_21_1.png)
+    
+
+
+>> 4. Rasti savininkus įvardintus kaip 'superhosts'. Kokią dalį visų
+
+
+```python
+listings.columns
+```
+
+
+
+
+    Index(['name', 'host_id', 'host_name', 'neighbourhood', 'latitude',
+           'longitude', 'room_type', 'price', 'minimum_nights',
+           'number_of_reviews', 'last_review', 'reviews_per_month',
+           'calculated_host_listings_count', 'availability_365',
+           'number_of_reviews_ltm', 'license', 'property_type', 'accommodates',
+           'first_review', 'review_scores_value', 'review_scores_cleanliness',
+           'review_scores_location', 'review_scores_accuracy',
+           'review_scores_communication', 'review_scores_checkin',
+           'review_scores_rating', 'maximum_nights', 'listing_url',
+           'host_is_superhost', 'host_about', 'host_response_time',
+           'host_response_rate'],
+          dtype='object')
+
+
+
+
+```python
+listings.host_is_superhost.isnull().sum()
+```
+
+
+
+
+    101
+
+
+
+
+```python
+total = listings.host_is_superhost.shape[0]
+total
+```
+
+
+
+
+    11583
+
+
+
+
+```python
+superhosts = listings.host_is_superhost.str.count(r"t").sum()
+superhosts
+```
+
+
+
+
+    2954.0
+
+
+
+
+```python
+print(f" Super hosts are {superhosts/total*100:.3}% of all the landlords")
+```
+
+     Super hosts are 25.5% of all the landlords
+
+
+>> 5. Ilgiausias komentaras (reviews_details)
+
+
+```python
+reviews_details.comments.iloc[0]
+```
+
+
+
+
+    "If you need a clean, comfortable place to stay in Vienna, search no more - Eva's B&B is THE place to go!  It is located in Donau area, very close to the airport and in the proximity of the main shopping centre.  The room I stayed was spacious and spotlessly clean.  These, however, are not the best yet - Eva is a great host, warm, friendly and helpful.  I will, without doubt, stay at this B&B again in my next trip to Vienna."
+
+
+
+
+```python
+len(reviews_details.comments.iloc[0])
+```
+
+
+
+
+    427
+
+
+
+
+```python
+#listing id su ilgiausiais komentarais
+reviews_details.comments.str.len().sort_values(ascending=False).head()
+```
+
+
+
+
+    listing_id
+    33890438    6243.0
+    5314551     5402.0
+    322786      5352.0
+    28269415    5223.0
+    44269873    5161.0
+    Name: comments, dtype: float64
+
+
+
+
+```python
+reviews_details.loc[33890438]
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>reviewer_id</th>
+      <th>reviewer_name</th>
+      <th>comments</th>
+    </tr>
+    <tr>
+      <th>listing_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>33890438</th>
+      <td>445973626</td>
+      <td>2019-04-30</td>
+      <td>14107672</td>
+      <td>Tina</td>
+      <td>Apartment was great, super clean and you can find everything that you need.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>446421272</td>
+      <td>2019-05-01</td>
+      <td>129364311</td>
+      <td>Samir</td>
+      <td>Great visit, 5/5 Stars :)</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>449339312</td>
+      <td>2019-05-06</td>
+      <td>31016918</td>
+      <td>Pierre-Yves</td>
+      <td>Très bon emplacement : transports en commun à deux pas, pour rejoindre en quelques minutes le centre de Vienne, les commerces d’alimentation sont très proches, et la rue est très calme.&lt;br/&gt;Appartement lumineux, spacieux (pour un couple), très propre, bien équipé (aménagement neuf). Mention particulière pour la (grande) chambre et son (grand et très confortable) lit ! Belle salle de bain également. Certes, pas de contact particulier, personnalisé, avec les hôtes, mais récupération et dépôt d...</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>450392169</td>
+      <td>2019-05-09</td>
+      <td>14195102</td>
+      <td>Gail</td>
+      <td>Great space - very accommodating team  (appreciated the extra touch of airport transfer) this was a last minute booking on my part so I appreciated the constant and quick contact - The space is very large (by EU standards) and very clean and comfortable  - I was only there less than 24 hours but I would definitely stay again.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>452489528</td>
+      <td>2019-05-13</td>
+      <td>4210458</td>
+      <td>Peter Refsing</td>
+      <td>Very nice and comfortable flat. Perfect as a base for visiting the city as a tourist or for work.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>455028185</td>
+      <td>2019-05-19</td>
+      <td>103744936</td>
+      <td>Olga</td>
+      <td>Enjoyed our stay! The bed was comfy, they had tea in the cabinets which made us feel right at home. Very clean and spacious accommodations.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>457524740</td>
+      <td>2019-05-24</td>
+      <td>248576099</td>
+      <td>David</td>
+      <td>Great stay, very nice apartment.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>463509677</td>
+      <td>2019-06-03</td>
+      <td>163012304</td>
+      <td>Natalia</td>
+      <td>Гостеприимные, ответственные хозяева. Всегда придут на помощь и уладят все проблемы, остались очень довольны.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>467433422</td>
+      <td>2019-06-10</td>
+      <td>212086551</td>
+      <td>Julian</td>
+      <td>Wir waren mit der Unterkunft mehr als zufrieden. Die Wohnung wurde noch einmal blitzsauber gereinigt und früher zur Verfügung gestellt als angekündigt. &lt;br/&gt;&lt;br/&gt;Polina und ihr Kollege haben uns immer sofort geantwortet und sind all unseren Wünschen sofort nachgekommen. Wir würden uns freuen noch einmal ihr Gast zu sein.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>468837200</td>
+      <td>2019-06-13</td>
+      <td>119726922</td>
+      <td>Philipp</td>
+      <td>The apartment is spacious, clean and stylish. In the neighborhood are restaurants, supermarkets and public transportation stations. We can recommend the apartment to everyone!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>470452793</td>
+      <td>2019-06-16</td>
+      <td>607885</td>
+      <td>Елена</td>
+      <td>Отличные апартаменты, недалеко от вокзала ( 20 мин пешком или 3-я остановка на трамвае, остановка рядимо). Никаких проблем ни с общением, ни с заселением. Есть все необходимое для комфортного проживания. Также есть Стиральная машина. В квартире всегда слегка прохладно, несмотря на жару на улице.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>476503522</td>
+      <td>2019-06-26</td>
+      <td>176445413</td>
+      <td>Malt</td>
+      <td>Coup de coeur pour cet appartement qui vaut le prix de la location: extrêmement propre (neuf), classe, spacieux bien agencé et super bien équipé (cuisine, frigo et congel), lit et canap hyper confortables, + appart frais pendant les fortes chaleurs car haut de plafond et dans un immeuble très calme.&lt;br/&gt;Sans compter que le quartier est à côté des jardins du belvédère, et super bien desservi par le tram et rennweg à 2 minutes!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>480167868</td>
+      <td>2019-07-02</td>
+      <td>32029441</td>
+      <td>Petter</td>
+      <td>Great apartment, with a great location. The place is quite big and very clean, and the hosts were quick to respond to our messages, even though we had a late booking. Only a few minutes away from essential shopping, and Belvedere Palace. Would definitely stay here again!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>480735725</td>
+      <td>2019-07-03</td>
+      <td>271226086</td>
+      <td>Manfred</td>
+      <td>Apartment ist sehr schön und sauber. Alles vorhanden was man braucht. Lage ist ruhig. Sehr freundlicher Kontakt. Schnelle Rückmeldungen. Check-In und Check-out sehr einfach und unkompliziert. Einkaufsmöglichkeiten und Öffis in ein paar Minuten erreichbar. Alles top.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>482176236</td>
+      <td>2019-07-06</td>
+      <td>84097004</td>
+      <td>Alex</td>
+      <td>Beautiful apartments to stay in Vienna. Clean, comfortable, quiet, everything was in place. Close to transport. Very special place.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>483952790</td>
+      <td>2019-07-08</td>
+      <td>71639356</td>
+      <td>Alina</td>
+      <td>I would like to stay here in my next visit. Nice place and perfect apartment. I recommend</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>486104915</td>
+      <td>2019-07-12</td>
+      <td>57693037</td>
+      <td>Alec</td>
+      <td>Well kept, easily accessible flat with all the amenities. Will recommend to anyone looking to stay in Vienna. Rooms were clean and spacious.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>488559950</td>
+      <td>2019-07-15</td>
+      <td>131482695</td>
+      <td>Peter</td>
+      <td>Beautiful and newly renovated apartment with good access to public transportation</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>490818039</td>
+      <td>2019-07-19</td>
+      <td>33832040</td>
+      <td>Ana</td>
+      <td>Supe bien ubicada, muy cómoda, excelente atención</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>491318431</td>
+      <td>2019-07-20</td>
+      <td>20990295</td>
+      <td>Louis</td>
+      <td>Perfect spot very close to the tram. Home was very clean and stylish and would love to stay here again!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>510548709</td>
+      <td>2019-08-16</td>
+      <td>73746379</td>
+      <td>Bipad Taran</td>
+      <td>Very nice apartment, enjoyed our stay.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>519359845</td>
+      <td>2019-08-28</td>
+      <td>286657909</td>
+      <td>Pedro</td>
+      <td>Very clean and pleasent apartment</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>524110166</td>
+      <td>2019-09-05</td>
+      <td>280590976</td>
+      <td>Kevin</td>
+      <td>I a great tidy and well laid out unit also close to local transport and short trip in trams or rail to main rail station</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>532087873</td>
+      <td>2019-09-19</td>
+      <td>188161354</td>
+      <td>Mi</td>
+      <td>Very nice and clean property, comfortable bed,  good location for visiting famous places. Closest train station has very good connection for going outside Vienna and use airport.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>544452494</td>
+      <td>2019-10-10</td>
+      <td>94036387</td>
+      <td>Matt</td>
+      <td>This was a great apartment for my friend and i to stay in for the jight.  It was very comfortable and had everything we needed. The hosts were also helpful with quick communication in helping us get settled in and even catered to our request for an early check in.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>545474014</td>
+      <td>2019-10-12</td>
+      <td>20027825</td>
+      <td>Bryan</td>
+      <td>Clean , modern, close to rains station and trams</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>554984382</td>
+      <td>2019-10-27</td>
+      <td>30332110</td>
+      <td>Lukáš</td>
+      <td>Clean, stylish place with profesional communication.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>557572699</td>
+      <td>2019-11-01</td>
+      <td>303647927</td>
+      <td>Lulu</td>
+      <td>a cozy apartment, with amazing little touches (including even umbrellas!), quick responses, support and punctuality were beyond our expectations. Thank you so much for an amazing stay in Vienna!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>559557063</td>
+      <td>2019-11-04</td>
+      <td>301599394</td>
+      <td>Dimitri</td>
+      <td>Tolle und sehr saubere Wohnung. Vieles befindet sich in Gehdistanz. Für einen Städtetrip in Wien sehr zu empfehlen.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>565073357</td>
+      <td>2019-11-17</td>
+      <td>149031278</td>
+      <td>Jiří</td>
+      <td>.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>566412543</td>
+      <td>2019-11-19</td>
+      <td>241076604</td>
+      <td>Zsombor</td>
+      <td>The place was very clean and it was in a good location.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>567677493</td>
+      <td>2019-11-23</td>
+      <td>78198625</td>
+      <td>Kelvin</td>
+      <td>I couldn't imagine a better place to stay in Vienna. The apartment is huge, very cozy and it's very close to public transit. It has all the appliances you could need on your trip as well. The host has great communication and is very nice.  Highly recommend!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>569620764</td>
+      <td>2019-11-27</td>
+      <td>3521002</td>
+      <td>Lori A.</td>
+      <td>Very clean spot and walkable to Upper Belvedere. Warm and cozy, too.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>576349268</td>
+      <td>2019-12-13</td>
+      <td>160354810</td>
+      <td>Alaina</td>
+      <td>This beautiful home was perfect for our stay in Vienna! It had everything we needed for an extended stay, and was close to grocery stores, transit, and the beautiful Belvedere palace! &lt;br/&gt;It was exceptionally clean, and wonderfully decorated!  &lt;br/&gt;We felt at home in this lovely apartment and I would recommend it to anyone looking to stay in this beautiful city!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>577313214</td>
+      <td>2019-12-15</td>
+      <td>40990388</td>
+      <td>Carina</td>
+      <td>We stayed at Tetiana’s place during a weekend trip to Vienna and enjoyed it very much. The place is spacious, sparkling clean and has a lot of amenities. Especially the kitchen was very well equipped. The neighborhood is also very quiet and public transportation can be reached easily by foot.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>588166502</td>
+      <td>2020-01-04</td>
+      <td>43401543</td>
+      <td>Gjorgje</td>
+      <td>Good location, very clean appartement. I spent great week in Vienna with my family</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>601254189</td>
+      <td>2020-02-03</td>
+      <td>217480549</td>
+      <td>姬</td>
+      <td>非常安静舒适的环境,打扫的非常干净,交通便利,距离火车站也非常近｡</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>602609943</td>
+      <td>2020-02-07</td>
+      <td>13075033</td>
+      <td>Shirley</td>
+      <td>Great place to stay and rest after a day of exploring! All the furnishings and facilities are of high quality and very well located with easy access to public transport.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>603329151</td>
+      <td>2020-02-09</td>
+      <td>134483614</td>
+      <td>Jakub M.</td>
+      <td>Apartment was really nice and clean. Good location.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>607103470</td>
+      <td>2020-02-17</td>
+      <td>20474379</td>
+      <td>Nina</td>
+      <td>Amazing appartment. Would recommend!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>608669452</td>
+      <td>2020-02-21</td>
+      <td>219091768</td>
+      <td>Phil</td>
+      <td>Très bon séjour, confort, calme, espace!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>610304100</td>
+      <td>2020-02-24</td>
+      <td>139568565</td>
+      <td>Aysa</td>
+      <td>Apartment of Tetiana was very comfortable! Its really "fresh" apartment! Furniture, sanitary, bed linnen, towls, kichen everything is sparking clean, fresh! It was very nice experience!!! Strongly recommened!!! We will come back for sure!!!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>611183875</td>
+      <td>2020-02-26</td>
+      <td>150972053</td>
+      <td>Jure</td>
+      <td>Nice, clean and comfortable place.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>616961069</td>
+      <td>2020-03-11</td>
+      <td>88672321</td>
+      <td>Claudia</td>
+      <td>Saubere Wohnung für einen kurzen Aufenthalt in Wien.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>629444391</td>
+      <td>2020-06-14</td>
+      <td>273073439</td>
+      <td>Ieva</td>
+      <td>Unser Wochenende in dieser Wohnung war sehr gelungen! Alles super organisiert, alles sehr sauber, Lage sehr gut! Also die Unterkunft ist wirklich empfehlenswert! Vielen Dank!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>634236618</td>
+      <td>2020-07-03</td>
+      <td>47784990</td>
+      <td>Ana</td>
+      <td>Way better than the photos! Clean, spacious, a lot of storage, very nice area (safe with stores, little restaurants and the nearby tram goes straight to the center very quick), communication was smooth and the place had nice amenities (bathroom and kitchen towels, tissues, umbrellas, cooking basics, tv with netflix ..). It was a little noisy, but this wasn’t a problem for us. Overall a great experience, would stay again!!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>634860204</td>
+      <td>2020-07-05</td>
+      <td>134648906</td>
+      <td>Juraj</td>
+      <td>Great place, great location!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>636141975</td>
+      <td>2020-07-09</td>
+      <td>100424151</td>
+      <td>Matt &amp; Trisha</td>
+      <td>Nice location and clean.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>649389330</td>
+      <td>2020-08-10</td>
+      <td>15798366</td>
+      <td>Arnaud</td>
+      <td>Nous avons séjourné dans l'appartement pendant tout le mois de juillet 2020.  &lt;br/&gt;&lt;br/&gt;Équipements : L'appartement est situé au premier étage (à environ 2 mètres du sol) et est le premier appartement de l'immeuble. Il  est sécurisé par une caméra de sécurité dans la couloir de l'entrée. L'appartement est particulièrement bien équipé et conviendra parfaitement pour un séjour de longue durée. Pour ce qui est de la cuisine, vous y trouverez un grand frigo et un congélateur, un four, de grands ...</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>651411170</td>
+      <td>2020-08-15</td>
+      <td>203659969</td>
+      <td>Maria</td>
+      <td>perfect place with a wide variety of appliances for cooking and living a very comfortable life there! hospitable and full of love. &lt;br/&gt;(it has a feeling of hotel rooms a bit, but clean and stylish)</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>654699749</td>
+      <td>2020-08-22</td>
+      <td>288801003</td>
+      <td>Marco Paolo</td>
+      <td>Vienna è una città magnifica e l'appartamento si trova in una posizione comoda per raggiungere tutte le attrazioni della città.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>666668345</td>
+      <td>2020-09-21</td>
+      <td>366939778</td>
+      <td>Mateusz</td>
+      <td>We spent lovely 4 days in this apartment. It is 5 min to Belvedere and 2min to the nearest shop. Train station is not faraway also. The apartament is very clean and the kitchen have everything that you need to cook meals. Host is helpful and respond quickly :)</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>671787395</td>
+      <td>2020-10-06</td>
+      <td>4237089</td>
+      <td>Yizhou Jim</td>
+      <td>Very safe and peaceful neighborhood. It was conveniently located next to the train station to the airport and 3 stops on the tram to city center. There are also plenty of grocery and food options within a short walk. &lt;br/&gt;&lt;br/&gt;The check-in/out process was very smooth with clear instructions. I would recommend to anyone who is visiting Vienna for short stays.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>712587669</td>
+      <td>2020-11-30</td>
+      <td>105615215</td>
+      <td>Peter</td>
+      <td>The pictures say it all in terms of what you can expect - 3.5m ceilings won't leave you with a claustrophobic feel. You are about 6 minutes away from a major transportation hub, so everything is close. Local shopping, Belvedere is a 10 minute walk. All is good.&lt;br/&gt;&lt;br/&gt;When we had a minor issue, communication was swift and on point, resolved it ASAP.&lt;br/&gt;I stayed for over a month and it was good value for money.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>713232832</td>
+      <td>2020-12-04</td>
+      <td>118780466</td>
+      <td>Ievgenii</td>
+      <td>Данная квартира расположена в отличном месте. Очень понятно и просто было поселиться- хозяева быстро реагировали на вопросы. Квартира очень чистая, и теплая несмотря на то что на первом этаже. Очень рекомендую квартиру и хозяев</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>714685751</td>
+      <td>2020-12-11</td>
+      <td>118780466</td>
+      <td>Ievgenii</td>
+      <td>Останавливаюсь в этой квартире уже второй раз. Меня полностью все устраивает - подробно описывал в прошлом отзыве. Спасибо хозяевам!</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>716417187</td>
+      <td>2020-12-19</td>
+      <td>30239812</td>
+      <td>Maria</td>
+      <td>Can highly recommend this apartment. It is beautiful, sparkling clean, and equipped with all the amenities needed. The locationis great, close by the botanical gardens, with a direct train connection from the airport just a walk away.</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>725461852</td>
+      <td>2021-01-19</td>
+      <td>383643933</td>
+      <td>Denis</td>
+      <td>Beste unterhalt,mehr als erwartet,ruhig , sehr sehr sauber , gute kommunikation,ich kann jeder weiter empfehlen. Danke und Mit freundlichen Grüßen / Best regards</td>
+    </tr>
+    <tr>
+      <th>33890438</th>
+      <td>731088902</td>
+      <td>2021-02-14</td>
+      <td>372555061</td>
+      <td>Drazen</td>
+      <td>Good, solid place - very clean</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+for review in reviews_details.loc[33890438].comments:
+    print(len(review))
+```
+
+    75
+    25
+    531
+    327
+    97
+    139
+    32
+    109
+    322
+    175
+    296
+    429
+    271
+    266
+    131
+    90
+    140
+    81
+    49
+    103
+    38
+    33
+    120
+    178
+    264
+    48
+    52
+    194
+    115
+    1
+    55
+    257
+    68
+    365
+    293
+    82
+    33
+    169
+    51
+    36
+    40
+    240
+    34
+    52
+    174
+    425
+    28
+    24
+    6243
+    198
+    127
+    260
+    360
+    416
+    227
+    132
+    234
+    162
+    30
+
+
+
+```python
+#ilgiausio komentaro id
+reviews_details.loc[33890438].set_index("id")["comments"].str.len()
+```
+
+
+
+
+    id
+    445973626      75
+    446421272      25
+    449339312     531
+    450392169     327
+    452489528      97
+    455028185     139
+    457524740      32
+    463509677     109
+    467433422     322
+    468837200     175
+    470452793     296
+    476503522     429
+    480167868     271
+    480735725     266
+    482176236     131
+    483952790      90
+    486104915     140
+    488559950      81
+    490818039      49
+    491318431     103
+    510548709      38
+    519359845      33
+    524110166     120
+    532087873     178
+    544452494     264
+    545474014      48
+    554984382      52
+    557572699     194
+    559557063     115
+    565073357       1
+    566412543      55
+    567677493     257
+    569620764      68
+    576349268     365
+    577313214     293
+    588166502      82
+    601254189      33
+    602609943     169
+    603329151      51
+    607103470      36
+    608669452      40
+    610304100     240
+    611183875      34
+    616961069      52
+    629444391     174
+    634236618     425
+    634860204      28
+    636141975      24
+    649389330    6243
+    651411170     198
+    654699749     127
+    666668345     260
+    671787395     360
+    712587669     416
+    713232832     227
+    714685751     132
+    716417187     234
+    725461852     162
+    731088902      30
+    Name: comments, dtype: int64
+
+
+
+>> 6. Daugiausiai komentarų turinti vieta
+
+
+```python
+reviews_details.groupby("listing_id")["id"].count(
+).sort_values(ascending=False).head(1)
+```
+
+
+
+
+    listing_id
+    90247    631
+    Name: id, dtype: int64
+
+
+
+
+```python
+reviews_details.loc[90247]
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>reviewer_id</th>
+      <th>reviewer_name</th>
+      <th>comments</th>
+    </tr>
+    <tr>
+      <th>listing_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>90247</th>
+      <td>234451</td>
+      <td>2011-04-21</td>
+      <td>384043</td>
+      <td>Erick</td>
+      <td>This apartment was perfect for our vacation visit. The location is great-- the place is within walking distance of the independently owned Neubaugasse shops, great food and the Museums Quarter. Public transportation is easily accessible; the buses and trams come often and are located very close to the underground system. The apartment itself is tastefully and beautifully decorated. The environment is very clean and equipped kitchen, wireless internet, and cable television. \r&lt;br/&gt;\r&lt;br/&gt;Dian...</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>241264</td>
+      <td>2011-04-26</td>
+      <td>480350</td>
+      <td>Siu Ling</td>
+      <td>Diana has a great place and its near the center.  I enjoy her enironment b/c i travel a lot for business and it was nice to be in a foreign city for the first time but I had the feeling i was at home.  I recommend diana's place and I will visit again.  Thank you!</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>245651</td>
+      <td>2011-04-30</td>
+      <td>316200</td>
+      <td>William</td>
+      <td>This apartment is our new benchmark in excellence!!  Every detail is beautifully thought out and a real pleasure to stay in.  Fast Wifi, fresh ground coffee, perfect temperature control on the hot water, great neighborhood and an overall elegant feeling.  Great job!!  We thoroughly enjoyed our stay.</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>251361</td>
+      <td>2011-05-04</td>
+      <td>69295</td>
+      <td>Vanessa</td>
+      <td>We stayed in Diana's lovely, spacious apartment for just shy of a week-- it couldn't have been more beautifully appointed, nor more perfectly located, just a short walk away from the Museum Quarter and the Naschmarkt (our two favorite destinations).  Diana's thought of everything, from extra towels to cushy bathrobes-- if I ever pass through Vienna again, I will head straight to her place!</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>265596</td>
+      <td>2011-05-16</td>
+      <td>481594</td>
+      <td>Wai Tung Hal</td>
+      <td>Diana is very responsive when I was making the arrangements . When we arrive, we received from her bottles of good wine as a welcome gift. Diana also written down many useful information to help us getting around and finding things to do and restaurants to eat. She is an excellent host. The apartment is beautiful, very spacious, airy, sunny, quiet, calming, and meticulously maintained. The location is quite central, yet quiet and safe at night. It was a short walk through a nice street with ...</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>669556401</td>
+      <td>2020-09-30</td>
+      <td>15477480</td>
+      <td>Andreas</td>
+      <td>Great flat in a great location - everything was really fine. Great communication with the host and very flexible with the check-in! Thx</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>700752080</td>
+      <td>2020-10-16</td>
+      <td>145637056</td>
+      <td>Victor</td>
+      <td>Great flat</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>702276051</td>
+      <td>2020-10-20</td>
+      <td>118928220</td>
+      <td>Barbara</td>
+      <td>Gemütlich Wohnung! Wir hatten einen feinen Aufenthalt. Alles nötige ist vorhanden. Die Buchung war sehr kurzfristig - die Antwort kam sehr schnell. Unkompliziert Check-in. Empfehlenswert!</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>703238301</td>
+      <td>2020-10-24</td>
+      <td>82430344</td>
+      <td>Mehiddine</td>
+      <td>Great place. Location is very convenient. Walking distance from Mariahilf street. Great amenities. I enjoyed it with my wife and daughter a lot as the location is very calm and no outside noise occurs. Only comment is to add a blind in the bathroom as there's a window which is not covered to the outside. Other than that. Great apartment.</td>
+    </tr>
+    <tr>
+      <th>90247</th>
+      <td>705762503</td>
+      <td>2020-11-01</td>
+      <td>10811775</td>
+      <td>Claudia</td>
+      <td>Perfekt.</td>
+    </tr>
+  </tbody>
+</table>
+<p>631 rows × 5 columns</p>
+</div>
+
+
+
+>> 7. Iš komentarų datų (reviews) suraskite kada daugiausiai turistų mieste (plot comments vs dates)
+
+
+```python
+reviews.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>date</th>
+    </tr>
+    <tr>
+      <th>listing_id</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>15883</th>
+      <td>2015-04-10</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-06-19</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-07-29</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-08-13</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-11-21</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+reviews["count"] = 1
+reviews
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>date</th>
+      <th>count</th>
+    </tr>
+    <tr>
+      <th>listing_id</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>15883</th>
+      <td>2015-04-10</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-06-19</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-07-29</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-08-13</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15883</th>
+      <td>2016-11-21</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>51994132</th>
+      <td>2021-09-11</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>52049228</th>
+      <td>2021-09-09</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>52088234</th>
+      <td>2021-09-12</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>52118091</th>
+      <td>2021-09-10</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>52118815</th>
+      <td>2021-09-12</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+<p>355004 rows × 2 columns</p>
+</div>
+
+
+
+
+```python
+reviews.groupby("date").sum().plot(figsize=(20, 20));
+```
+
+
+    
+![png](output_41_0.png)
+    
+
+
+>>8. surasti, kas turi daugiausia patogumu (amenities)
+
+
+```python
+#listings.groupby("listing_id")["id"].count(
+#).sort_values(ascending=False).head(1)
+
+listings.groupby(["host_id"])[len("amenities")].count().reset_index(name="count").sort_values(by="count", ascending=False).head(10)
+
+```
+
+
+    ---------------------------------------------------------------------------
+
+    KeyError                                  Traceback (most recent call last)
+
+    <ipython-input-63-9d3282a69938> in <module>
+          1 #listings.groupby("listing_id")["id"].count(
+          2 #).sort_values(ascending=False).head(1)
+    ----> 3 listings.groupby(["host_id"])[len("amenities")].count().reset_index(name="count").sort_values(by="count", ascending=False).head(10)
+    
+
+    /opt/anaconda3/lib/python3.8/site-packages/pandas/core/groupby/generic.py in __getitem__(self, key)
+       1540                 stacklevel=2,
+       1541             )
+    -> 1542         return super().__getitem__(key)
+       1543 
+       1544     def _gotitem(self, key, ndim: int, subset=None):
+
+
+    /opt/anaconda3/lib/python3.8/site-packages/pandas/core/base.py in __getitem__(self, key)
+        278             # error: "SelectionMixin" has no attribute "obj"  [attr-defined]
+        279             if key not in self.obj:  # type: ignore[attr-defined]
+    --> 280                 raise KeyError(f"Column not found: {key}")
+        281             return self._gotitem(key, ndim=1)
+        282 
+
+
+    KeyError: 'Column not found: 9'
+
+
+
+```python
+
+```
